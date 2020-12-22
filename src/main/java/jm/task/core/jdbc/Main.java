@@ -23,6 +23,7 @@ public class Main {
         saveUser(user3);
         saveUser(user4);
 
+
         userService.getAllUsers().forEach(System.out::println);
 
         userService.cleanUsersTable();
