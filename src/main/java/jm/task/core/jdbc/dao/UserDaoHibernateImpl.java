@@ -7,80 +7,102 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
 import javax.persistence.Query;
-import javax.persistence.TypedQuery;
 import java.util.List;
 
 public class UserDaoHibernateImpl implements UserDao {
 
-    private SessionFactory factory;
+    private final SessionFactory factory;
 
     public UserDaoHibernateImpl() {
         factory = Util.getFactory();
     }
 
-
     @Override
     public void createUsersTable() {
-        String sqlCreateTable =
-                "CREATE TABLE IF NOT EXISTS users " +
-                        "(id BIGINT NOT NULL AUTO_INCREMENT, " +
-                        "name TINYTEXT, " +
-                        "last_name TINYTEXT," +
-                        " age TINYINT, " +
-                        "PRIMARY KEY(id))";
-        try(Session session = factory.openSession()){
-            Transaction transaction = session.beginTransaction();
-            session.createSQLQuery(sqlCreateTable).executeUpdate();
-            transaction.commit();
-        }
+        modifyTable("CREATE TABLE IF NOT EXISTS users " +
+                "(id BIGINT NOT NULL AUTO_INCREMENT, " +
+                "name TINYTEXT, " +
+                "last_name TINYTEXT," +
+                " age TINYINT, " +
+                "PRIMARY KEY(id))");
     }
 
     @Override
     public void dropUsersTable() {
-        String sqlDropTable =
-                "DROP TABLE IF EXISTS users";
-        try(Session session = factory.openSession()){
-            Transaction transaction = session.beginTransaction();
-            session.createSQLQuery(sqlDropTable).executeUpdate();
-            transaction.commit();
-        }
+        modifyTable("DROP TABLE IF EXISTS users");
     }
+
 
     @Override
     public void saveUser(String name, String lastName, byte age) {
-        User user = new User(name, lastName, age);
-        try (Session session = factory.openSession()){
-            Transaction transaction = session.beginTransaction();
-            session.save(user);
+        Session session = factory.openSession();
+        final Transaction transaction = session.getTransaction();
+        transaction.begin();
+        try {
+            session.persist(new User(name, lastName, age));
             transaction.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            transaction.rollback();
+        } finally {
+            session.close();
         }
     }
 
     @Override
     public void removeUserById(long id) {
-        try (Session session = factory.openSession()){
-            Transaction transaction = session.beginTransaction();
+        Session session = factory.openSession();
+        final Transaction transaction = session.getTransaction();
+        transaction.begin();
+        try {
             Query query = session.createQuery("delete User where id = :id");
             query.setParameter("id", id);
             query.executeUpdate();
             transaction.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            transaction.rollback();
+        } finally {
+            session.close();
         }
     }
 
     @Override
     public List<User> getAllUsers() {
-        try (Session session = factory.openSession()){
+        try (Session session = factory.openSession()) {
             return session.createQuery("from User").getResultList();
         }
     }
 
     @Override
     public void cleanUsersTable() {
-        try (Session session = factory.openSession()){
-            Transaction transaction = session.beginTransaction();
+        Session session = factory.openSession();
+        final Transaction transaction = session.getTransaction();
+        transaction.begin();
+        try  {
             Query query = session.createQuery("delete from User");
             query.executeUpdate();
             transaction.commit();
+        } catch (Exception e){
+            e.printStackTrace();
+            transaction.rollback();
+        } finally {
+            session.close();
+        }
+    }
+
+    private void modifyTable(String sql) {
+        Session session = factory.openSession();
+        final Transaction transaction = session.getTransaction();
+        transaction.begin();
+        try {
+            session.createSQLQuery(sql).executeUpdate();
+            transaction.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            transaction.rollback();
+        } finally {
+            session.close();
         }
     }
 }
